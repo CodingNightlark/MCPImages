@@ -9,8 +9,10 @@
     "dev": "npx @modelcontextprotocol/inspector node index.js",
     "test": "node test-client.js"
   },
+
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
+    "axios": "^1.11.0",
     "dotenv": "^17.2.1",
     "form-data": "^4.0.4",
     "formdata-node": "^4.4.1",
@@ -18,12 +20,11 @@
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },
-  "keywords": [
-    "mcp",
-    "images",
-    "dalle",
-    "ai"
-  ],
-  "author": "Your Name",
+
+  "bin": {
+  "mcp-weather-server": "index.js"
+},
+
+  "author": "Chloe",
   "license": "MIT"
 }

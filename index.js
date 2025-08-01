@@ -9,8 +9,9 @@ import { fileURLToPath } from 'url';
 import { zodToJsonSchema } from "zod-to-json-schema";
 import dotenv from 'dotenv';
 import FormData from 'form-data';
+import axios from 'axios';
 dotenv.config(); 
-   
+    
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -204,83 +205,85 @@ async function generateImagesInBackground(jobId, wordList, provider, style, back
               quality,
               n: 1
             })
-          });
+          }); 
 
           if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
+            const err = await response.json().catch(() => ({})); 
             throw new Error(err.error?.message || `HTTP ${response.status}`);
-          }
+          }   
 
           const data = await response.json();
           const imageUrl = data.data[0].url;
  
           const imgRes = await fetch(imageUrl);
-          if (!imgRes.ok) throw new Error("Download failed");
+          if (!imgRes.ok) throw new Error("Download failed");  
           const buffer = Buffer.from(await imgRes.arrayBuffer());
           await fs.writeFile(filepath, buffer);
 
           jobInfo.results.push({ url: `file://${filepath}`, alt: `${style} image of ${word}`, width, height, filename, word });
           success = true;
-          break;
+          break; 
         }
-
+ 
         case 'stability': {
-          if (!config.providers.stability.apiKey) {
-            throw new Error("Missing STABILITY_API_KEY");
-          }
+  if (!config.providers.stability.apiKey) {
+    throw new Error("Missing STABILITY_API_KEY");
+  }
 
-          const boundary = `----formdata-${Math.random().toString(36).substring(2)}`; 
-          const formFields = [
-            ['prompt', prompt], 
-            ['width', width.toString()],
-            ['height', height.toString()],
-            ['samples', '1'],  
-            ['steps', '30'],
-            ['cfg_scale', '7'],
-            ['seed', Math.floor(Math.random() * 1000000).toString()]
-          ];
+  // Use their working format
+  const payload = {
+    prompt: prompt,
+    output_format: "png", // or "webp" if you prefer
+    width: width,
+    height: height
+  };
 
-          let formBody = '';
-          for (const [key, value] of formFields) {
-            formBody += `--${boundary}\r\n`;
-            formBody += `Content-Disposition: form-data; name="${key}"\r\n\r\n`;
-            formBody += `${value}\r\n`; 
-          }
-          formBody += `--${boundary}--\r\n`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-          const response = await fetch(config.providers.stability.endpoint, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${config.providers.stability.apiKey}`,
-              'Accept': 'application/json',
-              'Content-Type': `multipart/form-data; boundary=${boundary}`
-            },
-            body: formBody
-          }); 
+  try {
+    // You'll need to install axios: npm install axios
+    const response = await axios.postForm(
+      `https://api.stability.ai/v2beta/stable-image/generate/ultra`,
+      axios.toFormData(payload, new FormData()),
+      {
+        validateStatus: undefined,
+        responseType: "arraybuffer",
+        headers: { 
+          Authorization: `Bearer ${config.providers.stability.apiKey}`, 
+          Accept: "image/*" 
+        },
+        signal: controller.signal
+      }
+    );
 
-          if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`Stability API error ${response.status}: ${errText}`);
-          } 
+    clearTimeout(timeoutId);
 
-          const data = await response.json();
-          
-          let base64Image;
-          if (data.artifacts && data.artifacts[0] && data.artifacts[0].base64) {
-            base64Image = data.artifacts[0].base64;
-          } else if (data.content && data.content[0]) {
-            base64Image = data.content[0];
-          } else {
-            throw new Error("No image data returned from Stability API");
-          }
-
-          const buffer = Buffer.from(base64Image, 'base64');
-          await fs.writeFile(filepath, buffer);
-
-          jobInfo.results.push({ url: `file://${filepath}`, alt: `${style} image of ${word}`, width, height, filename, word });
-          success = true;
-          break;
-        }
+    if (response.status === 200) {
+      const buffer = Buffer.from(response.data);
+      await fs.writeFile(filepath, buffer);
+      
+      jobInfo.results.push({ 
+        url: `file://${filepath}`, 
+        alt: `${style} image of ${word}`, 
+        width, 
+        height, 
+        filename, 
+        word 
+      });
+      success = true;
+    } else {
+      throw new Error(`Stability API error ${response.status}: ${response.data.toString()}`);
+    }
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error("Stability API request timed out after 90 seconds");
+    }
+    throw error;
+  }
+  break;
+}
 
         default:
           throw new Error(`Unsupported provider: ${provider}`);
@@ -295,12 +298,12 @@ async function generateImagesInBackground(jobId, wordList, provider, style, back
         url: "",
         alt: `Failed to generate image for ${word}: ${error.message}`,
         width: 0,
-        height: 0, 
+        height: 0,   
         filename: "",
         word
-      });
+      });  
     }
-
+  
     jobInfo.completedWords = i + 1;
   }
 
@@ -312,7 +315,7 @@ async function generateImagesInBackground(jobId, wordList, provider, style, back
 }
 
 async function generateImagesSync(input) {
-  // Keep the original synchronous version for when async=false
+  // Keep the original synchronous version for when async = false, also because I don't want to undo my work even if it was the wrong thing haha
   const { words, provider, style, background, size, quality } = generateImagesSchema.parse(input);
   const wordList = words.split(",")
     .map(w => w.trim())
@@ -489,7 +492,7 @@ async function generateImagesSync(input) {
   return results;
 }
 
-// === Check Job Status ===
+//  check job status
 async function checkStatus(input) {
   const { jobId } = checkStatusSchema.parse(input);
   
@@ -521,7 +524,7 @@ async function checkStatus(input) {
   return response;
 }
 
-// === List Images ===
+// list images 
 async function listImages(input) {
   const { pattern } = listImagesSchema.parse(input);
   await ensureImageDirectory();
@@ -551,7 +554,7 @@ async function listImages(input) {
   return results.sort((a, b) => new Date(b.created) - new Date(a.created));
 }
 
-// === Delete Image ===
+// delete image
 async function deleteImage(input) {
   const { filename } = deleteImageSchema.parse(input);
   const filepath = path.join(config.imageDir, filename);
@@ -568,7 +571,7 @@ async function deleteImage(input) {
   }
 }
 
-// === Tool Registration ===
+// tool registration 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
@@ -594,7 +597,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ]
 }));
 
-// === Tool Handler ===
+// tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   try {
@@ -626,7 +629,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// === Start Server ===
+// start server 
 async function main() { 
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -636,6 +639,6 @@ async function main() {
 }
 
 main().catch(error => {
-  console.error("💥 Server failed to start:", error);
+  console.error(" Server failed to start:", error);
   process.exit(1);
 }); 

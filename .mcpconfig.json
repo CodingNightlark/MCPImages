@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "images": {
+      "command": "npx",
+      "args": ["mcp-images"],
+      "env": {
+        "OPENAI_API_KEY": "your_openai_api_key_here",
+        "STABILITY_API_KEY": "your_stability_api_key_here"
+      }
+    }
+  }
+}
