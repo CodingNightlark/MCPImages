@@ -19,3 +19,20 @@ You can choose style but results are best with either 'realistic' or 'cartoon' f
 ## 🛠️ Requirements
 
 - Node.js 18+
+- stability API key
+- setup config file
+
+Example config file: {
+  "mcpServers": {
+    "images": {
+      "command": "npx",
+      "args": ["mcp-images"],
+      "env": {
+        "OPENAI_API_KEY": "your_openai_api_key_here",
+        "STABILITY_API_KEY": "your_stability_api_key_here"
+      }
+    }
+  }
+}
+
+
