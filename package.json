@@ -1,6 +1,6 @@
 {
   "name": "mcp-images",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for image generation",
   "main": "index.js",
   "type": "module",
@@ -9,7 +9,6 @@
     "dev": "npx @modelcontextprotocol/inspector node index.js",
     "test": "node test-client.js"
   },
-
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "axios": "^1.11.0",
@@ -20,11 +19,9 @@
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },
-
   "bin": {
-  "mcp-weather-server": "index.js"
-},
-
+    "mcp-weather-server": "index.js"
+  },
   "author": "Chloe",
   "license": "MIT"
 }
